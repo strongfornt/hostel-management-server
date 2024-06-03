@@ -28,7 +28,8 @@ async function run() {
     //database collection start ========================================================
     const database = client.db("hostelDB");
     const usersCollection = database.collection("users");
-    const membershipCollection = database.collection("membership")
+    const membershipCollection = database.collection("membership");
+    const paymentCollection = database.collection("payment");
     //database collection end ========================================================
 
     //users related action start ======================================================
@@ -42,13 +43,17 @@ async function run() {
         const result = await usersCollection.insertOne(userInfo)
         res.send(result)
     })
+
+    app.put('/users',async(req,res)=>{
+        
+    })
     //users related action end ======================================================
     
     //Payment related action start===================================================
     app.post('/create-payment-intent',async(req,res)=>{
         const {price} = req.body;
         const amount = parseInt(price * 100);
-        console.log(amount,'amount inside the intent');
+        // console.log(amount,'amount inside the intent');
         //payment intent =====
         const paymentIntent= await stripe.paymentIntents.create({
             amount,
@@ -60,6 +65,16 @@ async function run() {
         })
     })
     //Payment related action end===================================================
+
+    // payment collection related action start ==================================
+
+    app.post('/payment',async(req,res)=>{
+        const payment = req.body;
+        const result = await paymentCollection.insertOne(payment);
+        res.send(result);
+    })
+    // payment collection related action end ==================================
+
 
     //Membership related action api start =========================================
     app.get('/membership/:name',async(req,res)=>{
