@@ -27,7 +27,8 @@ async function run() {
   try {
     //database collection start ========================================================
     const database = client.db("hostelDB");
-    const usersCollection = database.collection("users")
+    const usersCollection = database.collection("users");
+    const membershipCollection = database.collection("membership")
     //database collection end ========================================================
 
     //users related action start ======================================================
@@ -59,6 +60,17 @@ async function run() {
         })
     })
     //Payment related action end===================================================
+
+    //Membership related action api start =========================================
+    app.get('/membership/:name',async(req,res)=>{
+        const name = req.params.name;
+        const query = {
+            name
+        }
+        const result = await membershipCollection.findOne(query)
+        res.send(result);
+    })
+    //Membership related action api end =========================================
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
