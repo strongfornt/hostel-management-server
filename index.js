@@ -45,7 +45,18 @@ async function run() {
     })
 
     app.put('/users',async(req,res)=>{
-        
+        const userInfo = req.body;
+        const filter = { email: userInfo?.email };
+        const options = { upsert:true };
+        const updateDoc ={
+            $set: {
+                badge: userInfo.badge
+            }
+        };
+
+        const result = await usersCollection.updateOne(filter,updateDoc,options);
+        res.send(result);
+
     })
     //users related action end ======================================================
     
