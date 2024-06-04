@@ -1,5 +1,6 @@
 const express = require("express");
 const { MongoClient, ServerApiVersion } = require('mongodb');
+const jwt = require('jsonwebtoken');
 const cors = require("cors");
 const app = express();
 require("dotenv").config();
@@ -23,6 +24,26 @@ const client = new MongoClient(uri, {
   }
 });
 
+
+//middleWare start ===============================================================
+const verifyToken =async (req,res,next) => {
+   console.log(authorization);
+    if(!req.headers.authorization){
+      return res.status(401).send({message:'unauthorized access'})
+    }
+    const token = req.headers.authorization.split(' ')[1]
+    jwt.verify(token,process.env.ACCESS_TOKEN,(err,decoded)=>{
+      if(err){
+        return res.status(401).send({message:'unauthorized access'})
+      }
+      req.decoded = decoded;
+      next();
+    })
+    
+  }
+ 
+  //middleWare end ==========================================================   
+
 async function run() {
   try {
     //database collection start ========================================================
@@ -31,6 +52,16 @@ async function run() {
     const membershipCollection = database.collection("membership");
     const paymentCollection = database.collection("payment");
     //database collection end ========================================================
+
+        //jwt related api =================================================
+        app.post('/jwt',async(req,res)=>{
+            const user = req.body;
+            const token = jwt.sign(user,process.env.ACCESS_TOKEN,{
+              expiresIn:'1h'
+            })
+            res.send({token})
+          })
+        //=================================================================  
 
     //users related action start ======================================================
     app.post('/users',async(req,res) =>{
@@ -50,7 +81,7 @@ async function run() {
         const options = { upsert:true };
         const updateDoc ={
             $set: {
-                badge: userInfo.badge
+                badge: userInfo?.badge
             }
         };
 
