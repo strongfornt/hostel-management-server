@@ -1,5 +1,5 @@
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const cors = require("cors");
 const app = express();
@@ -64,6 +64,11 @@ async function run() {
         //=================================================================  
 
     //users related action start ======================================================
+     app.get('/users',async(req,res)=> {
+        const result = await usersCollection.find().toArray();
+        res.send(result)
+     })     
+
     app.post('/users',async(req,res) =>{
         const userInfo = req.body;
         const query = {email:userInfo.email}
@@ -71,8 +76,11 @@ async function run() {
         if(existingUser){
           return res.send({message:'user already exists',insertedId:null})
         }
-        const result = await usersCollection.insertOne(userInfo)
-        res.send(result)
+       else{
+        const result = await usersCollection.insertOne(userInfo);
+       return res.send(result)
+       }
+        
     })
 
     app.put('/users',async(req,res)=>{
@@ -88,6 +96,20 @@ async function run() {
         const result = await usersCollection.updateOne(filter,updateDoc,options);
         res.send(result);
 
+    })
+
+    app.patch('/users/:id', async(req,res)=> {
+      const id = req?.params?.id;
+      const userInfo = req.body;
+      // console.log(id);
+      const filter = { _id: new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          role: userInfo?.role
+        }
+      }
+      const result = await usersCollection.updateOne(filter,updateDoc);
+      res.send(result)
     })
     //users related action end ======================================================
     
