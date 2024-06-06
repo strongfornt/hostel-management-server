@@ -65,7 +65,15 @@ async function run() {
 
     //users related action start ======================================================
      app.get('/users',async(req,res)=> {
-        const result = await usersCollection.find().toArray();
+        const filter = req.query;
+        let query ={};
+        if(filter.name){
+          query.name = { $regex: filter.name, $options: 'i' }
+        }
+        if(filter.email){
+          query.email = { $regex: filter.email, $options: 'i'  }
+        }
+        const result = await usersCollection.find(query).toArray();
         res.send(result)
      })     
 
