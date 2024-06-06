@@ -51,6 +51,7 @@ async function run() {
     const usersCollection = database.collection("users");
     const membershipCollection = database.collection("membership");
     const paymentCollection = database.collection("payment");
+    const mealsCollection = database.collection("meals");
     //database collection end ========================================================
 
         //jwt related api =================================================
@@ -158,6 +159,14 @@ async function run() {
         res.send(result);
     })
     //Membership related action api end =========================================
+
+    //Meals related action api start ======================================
+    app.post('/meals',async(req,res)=>{
+      const mealsInfo = req.body;
+      const result = await mealsCollection.insertOne(mealsInfo)
+      res.send(result)
+    })
+    //Meals related action api end ======================================
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
