@@ -161,6 +161,21 @@ async function run() {
     //Membership related action api end =========================================
 
     //Meals related action api start ======================================
+    app.get('/meals',async(req,res)=>{
+      const query = req.query.sort;
+
+      // const order = 1;
+      let sortCriteria = {};
+    if (query === 'likes') {
+        sortCriteria = { likes: -1 }; // Sort by likes in descending order
+    } else if (query === 'reviews') {
+        sortCriteria = { reviews: -1 }; // Sort by reviews in descending order
+    }
+
+     
+      const result = await mealsCollection.find().sort(sortCriteria).toArray();
+      res.send(result)
+    })
     app.post('/meals',async(req,res)=>{
       const mealsInfo = req.body;
       const result = await mealsCollection.insertOne(mealsInfo)
