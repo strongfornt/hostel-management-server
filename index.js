@@ -52,6 +52,7 @@ async function run() {
     const membershipCollection = database.collection("membership");
     const paymentCollection = database.collection("payment");
     const mealsCollection = database.collection("meals");
+    const upcomingMealsCollection = database.collection("upcomingMeals");
     //database collection end ========================================================
 
         //jwt related api =================================================
@@ -151,17 +152,31 @@ async function run() {
 
     //Membership related action api start =========================================
     app.get('/membership/:name',async(req,res)=>{
-        const name = req.params.name;
+        const filter = req.params.name;
+        // console.log(name);
         const query = {
-            name
+            name: filter
         }
         const result = await membershipCollection.findOne(query)
         res.send(result);
     })
     //Membership related action api end =========================================
 
-    //Meals related action api start ======================================
-    app.get('/meals',async(req,res)=>{
+    //upcoming collection related api start ==================================================
+    app.get('/upcomingMeals',async(req,res)=>{
+      const result = await upcomingMealsCollection.find().toArray();
+      res.send(result)
+    })
+    app.post('/upcomingMeals',async(req,res)=>{
+      const mealsInfo = req.body;
+      const result = await upcomingMealsCollection.insertOne(mealsInfo)
+      res.send(result)
+    })
+    //upcoming collection related api end ==================================================
+
+
+    // mealsCollection related action api start ======================================
+    app.get('/allMeals',async(req,res)=>{
       const query = req.query.sort;
 
       // const order = 1;
@@ -172,16 +187,48 @@ async function run() {
         sortCriteria = { reviews: -1 }; // Sort by reviews in descending order
     }
 
-     
       const result = await mealsCollection.find().sort(sortCriteria).toArray();
       res.send(result)
+    })
+    app.get('/meals', async(req,res)=>{
+      const {limit, offset, category,price, search} = req.query;
+      // console.log(search);
+      let query = {}  
+      if(category){
+        query = {category: category};
+      }
+      if(search){
+        query = {title : {$regex: search, $options: 'i' }}
+      }
+      
+      if(price){{
+      
+        if(price ==5){
+          query.price ={ $gte: price}
+        }
+        if(price == 7){
+          query.price ={ $gte: price}
+        }
+      }}
+
+      //limit and skip related start ========================================
+      const page = parseInt(offset) || 1;
+    const limits= parseInt(limit) || 4;
+    const skip = (page - 1) * limit;
+    //limit and skip related start ========================================
+
+
+      const result = await mealsCollection.find(query).skip(skip).limit(limits).toArray();
+      // count the document api start ======================================
+      const mealsCount = await mealsCollection.countDocuments(query)
+      res.send({result,mealsCount})
     })
     app.post('/meals',async(req,res)=>{
       const mealsInfo = req.body;
       const result = await mealsCollection.insertOne(mealsInfo)
       res.send(result)
     })
-    //Meals related action api end ======================================
+    //meal collection related action api end ======================================
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
