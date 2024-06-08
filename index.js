@@ -223,10 +223,18 @@ async function run() {
       const mealsCount = await mealsCollection.countDocuments(query)
       res.send({result,mealsCount})
     })
-    app.post('/meals',async(req,res)=>{
-      const mealsInfo = req.body;
-      const result = await mealsCollection.insertOne(mealsInfo)
-      res.send(result)
+    app.post('/meals/:id',async(req,res)=>{
+      const mealId = req.params.id;
+      const mealsInfo = req.body.mealInfo;
+      // if specific meal   in upcoming meals collection =====================
+        if(mealsInfo){
+          const insertResult = await mealsCollection.insertOne(mealsInfo)
+          const deleteResult = await upcomingMealsCollection.deleteOne({_id: new ObjectId(mealId)})
+         return res.send({insertResult,deleteResult})
+        }
+      // if specific meal   in upcoming meals collection end ====================
+      // const result = await mealsCollection.insertOne(mealsInfo)
+      // res.send(result)
     })
     //meal collection related action api end ======================================
 
