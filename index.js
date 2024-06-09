@@ -79,6 +79,13 @@ async function run() {
         res.send(result)
      })     
 
+     app.get('/user/:email',async(req,res) =>{
+        const email = req.params.email;
+        const query = {email: email};
+        const result = await usersCollection.findOne(query)
+        res.send(result)
+     })
+
     app.post('/users',async(req,res) =>{
         const userInfo = req.body;
         const query = {email:userInfo.email}
@@ -181,6 +188,16 @@ async function run() {
 
 
     // mealsCollection related action api start ======================================
+    app.get('/meal-details/:id',async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await mealsCollection.findOne(query);
+      res.send(result)
+    })
+    app.get('/category_meals',async(req,res) =>{
+      const result = await mealsCollection.find().toArray();
+      res.send(result)
+    } )
     app.get('/allMeals',async(req,res)=>{
       const query = req.query.sort;
 
@@ -192,11 +209,14 @@ async function run() {
         sortCriteria = { reviews: -1 }; // Sort by reviews in descending order
     }
 
-      const result = await mealsCollection.find().sort(sortCriteria).toArray();
+      const result = await mealsCollection.find({status: 'Available'}).sort(sortCriteria).toArray();
       res.send(result)
     })
+   
     app.get('/meals', async(req,res)=>{
       const {limit, offset, category,price, search} = req.query;
+      console.log(price);
+      const priceValue = parseFloat(price)
       // console.log(search);
       let query = {}  
       if(category){
@@ -206,13 +226,13 @@ async function run() {
         query = {title : {$regex: search, $options: 'i' }}
       }
       
-      if(price){{
+      if(priceValue){{
       
-        if(price ==5){
-          query.price ={ $gte: price}
+        if(priceValue === 5){
+          query.price ={ $lt: priceValue}
         }
-        if(price == 7){
-          query.price ={ $gte: price}
+        if(priceValue === 7){
+          query.price ={ $gt: priceValue}
         }
       }}
 
@@ -231,15 +251,20 @@ async function run() {
     app.post('/meals/:id',async(req,res)=>{
       const mealId = req.params.id;
       const mealsInfo = req.body.mealInfo;
+      const status = mealsInfo?.status;
+      console.log(status);
       // if specific meal   in upcoming meals collection =====================
-        if(mealsInfo){
+        if(mealsInfo && status === 'Available'){
           const insertResult = await mealsCollection.insertOne(mealsInfo)
           const deleteResult = await upcomingMealsCollection.deleteOne({_id: new ObjectId(mealId)})
          return res.send({insertResult,deleteResult})
         }
+        if(mealsInfo && status === 'Upcoming'){
+          const insertResult = await mealsCollection.insertOne(mealsInfo);
+          return res.send(insertResult);
+        }
       // if specific meal   in upcoming meals collection end ====================
-      // const result = await mealsCollection.insertOne(mealsInfo)
-      // res.send(result)
+  
     })
     app.put('/allMeals/:id', async(req,res)=>{
       const id = req.params.id;
@@ -261,8 +286,14 @@ async function run() {
       const result = await mealsCollection.deleteOne(query);
       res.send(result)
     })
-
     //meal collection related action api end ======================================
+    //upcomingPublic meal related work with mealsCollection and upcomingMeals collection======================
+      app.get('/upcoming_public_meals',async(req,res)=>{
+        const result = await mealsCollection.find({status: 'Upcoming'}).toArray()
+        res.send(result)
+      })
+    //upcomingPublic meal related work with mealsCollection and upcomingMeals collection end============
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
