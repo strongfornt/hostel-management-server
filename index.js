@@ -164,7 +164,12 @@ async function run() {
 
     //upcoming collection related api start ==================================================
     app.get('/upcomingMeals',async(req,res)=>{
-      const result = await upcomingMealsCollection.find().toArray();
+      const likes = req.query.likes;
+      let sortCriteria ={}
+      if(likes === 'likes'){
+        sortCriteria = {likes: -1}
+      }
+      const result = await upcomingMealsCollection.find().sort(sortCriteria).toArray();
       res.send(result)
     })
     app.post('/upcomingMeals',async(req,res)=>{
@@ -236,6 +241,27 @@ async function run() {
       // const result = await mealsCollection.insertOne(mealsInfo)
       // res.send(result)
     })
+    app.put('/allMeals/:id', async(req,res)=>{
+      const id = req.params.id;
+      const mealInfo = req.body.mealInfo;
+      const filter = {_id: new ObjectId(id)};
+      const options ={ upsert: true  }
+      const updateDoc = {
+        $set: {
+          ...mealInfo
+        }
+      }
+      const result = await mealsCollection.updateOne(filter,updateDoc,options)
+      res.send(result)
+
+    })
+    app.delete('/allMeals/:id',async(req,res)=>{
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await mealsCollection.deleteOne(query);
+      res.send(result)
+    })
+
     //meal collection related action api end ======================================
 
     // Send a ping to confirm a successful connection
