@@ -50,7 +50,7 @@ async function run() {
     const upcomingMealsCollection = database.collection("upcomingMeals");
     const likesCollection = database.collection("likes");
     const reviewsCollection = database.collection("reviews");
-    const mealRequestCollection = database.collection("requestedMeals")
+    const requestMealsCollection = database.collection("requestedMeals")
     //database collection end ========================================================
 
     //jwt related api =================================================
@@ -329,8 +329,9 @@ async function run() {
 
     //request meal collection related work start here ======================
       app.post('/request_meals',async(req,res)=>{
-        const {requestMealInfo} = req.body;
-        console.log(requestMealInfo);
+        const requestMealInfo = req.body;
+        const result = await requestMealsCollection.insertOne(requestMealInfo);
+        res.send(result);
       })
     //request meal collection related work start here end ======================
 
@@ -431,6 +432,8 @@ async function run() {
       const { email } = req.body;
     
       const existingLike = await likesCollection.findOne({ mealId: id });
+      const existRequestLike = await requestMealsCollection.find({mealId:id}).toArray();
+      const existReviewsLike = await reviewsCollection.find({mealId: id}).toArray()
       if (existingLike) {
         const emailIndex = existingLike.userEmails.indexOf(email);
 
@@ -443,10 +446,25 @@ async function run() {
             { _id: new ObjectId(id) },
             { $inc: { likes: -1 } }
           );
-          // await upcomingMealsCollection.updateOne(
-          //   { _id: new ObjectId(upcomingId) },
-          //   { $inc: { likes: -1 } }
-          // );
+         
+          if (existRequestLike.length > 0) {
+            await Promise.all(existRequestLike.map(async (request) => {
+              await requestMealsCollection.updateOne(
+                { _id: request._id },
+                { $inc: { likes: -1 } }
+              );
+            }));
+          }
+          
+          if (existReviewsLike.length > 0) {
+            await Promise.all(existReviewsLike.map(async (review) => {
+              await reviewsCollection.updateOne(
+                { _id: review._id },
+                { $inc: { likes: -1 } }
+              );
+            }));
+          }
+    
 
           return res.send({ message: false });
         } else{
@@ -458,11 +476,26 @@ async function run() {
             { _id: new ObjectId(id) },
             { $inc: { likes: 1 } }
           );
-          // await upcomingMealsCollection.updateOne(
-          //   { _id: new ObjectId(upcomingId) },
-          //   { $inc: { likes: 1 } }
-          // );
-          // return res.send({message:true})
+       
+          if (existRequestLike.length > 0) {
+            await Promise.all(existRequestLike.map(async (request) => {
+              await requestMealsCollection.updateOne(
+                { _id: request._id },
+                { $inc: { likes: 1 } }
+              );
+            }));
+          }
+    
+          if (existReviewsLike.length > 0) {
+            await Promise.all(existReviewsLike.map(async (review) => {
+              await reviewsCollection.updateOne(
+                { _id: review._id },
+                { $inc: { likes: 1 } }
+              );
+            }));
+          }
+
+          return res.send({ message: true });
         }
       }else{
         await likesCollection.insertOne({
@@ -473,20 +506,73 @@ async function run() {
           { _id: new ObjectId(id) },
           { $inc: { likes: 1 } }
         );
-        // await upcomingMealsCollection.updateOne(
-        //   { _id: new ObjectId(upcomingId) },
-        //   { $inc: { likes: 1 } }
-        // );
-        // return res.send({message:true})
+
+        if (existRequestLike.length > 0) {
+          await Promise.all(existRequestLike.map(async (request) => {
+            await requestMealsCollection.updateOne(
+              { _id: request._id },
+              { $inc: { likes: 1 } }
+            );
+          }));
+        }
+    
+        if (existReviewsLike.length > 0) {
+          await Promise.all(existReviewsLike.map(async (review) => {
+            await reviewsCollection.updateOne(
+              { _id: review._id },
+              { $inc: { likes: 1 } }
+            );
+          }));
+        }
+
+        return res.send({ message: true });
       }
 
     
 
-      return res.send({ message: true });
+    
       
 
     });
     //likes collection related work end here  ============================
+
+    //reviews collection related work start here ========================
+      app.post('/reviews/:id',async(req,res)=>{
+        const id = req.params.id;
+        const reviewsData = req.body;
+        const result = await reviewsCollection.insertOne(reviewsData);
+  
+      if(result){
+            // Update reviews count in mealsCollection
+      await mealsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $inc: { reviews: 1 } }
+      );
+         // Update reviews count in requestMealsCollection
+         const reviewInRequest = await requestMealsCollection.find({ mealId: id }).toArray();
+         await Promise.all(reviewInRequest.map(async (request) => {
+           await requestMealsCollection.updateOne(
+             { _id: request._id },
+             { $inc: { reviews: 1 } }
+           );
+         }));
+
+            // Update reviews count in reviewsMealsCollection
+      const reviewInReviews = await reviewsCollection.find({ mealId: id }).toArray();
+      await Promise.all(reviewInReviews.map(async (review) => {
+        await reviewsCollection.updateOne(
+          { _id: review._id },
+          { $inc: { reviews: 1 } }
+        );
+      }));
+
+      return res.send(result)
+
+      }
+        
+      })
+    //reviews collection related work start here end ========================
+
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
