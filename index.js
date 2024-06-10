@@ -281,12 +281,25 @@ async function run() {
       const { limit, offset, category, price, search } = req.query;
       const priceValue = parseFloat(price);
       let query = {};
+      const regex = new RegExp(search, 'i'); // Case-insensitive regex
+      if(search){
+          query =   {
+            $or: [
+              { title: regex },
+              { category: regex },
+              {status: regex},
+              { price: regex }
+
+            ]
+          }
+      }
+      
       if (category) {
         query = { category: category };
       }
-      if (search) {
-        query = { title: { $regex: search, $options: "i" } };
-      }
+      // if (search) {
+      //   query = { title: { $regex: search, $options: "i" } };
+      // }
 
       if (priceValue) {
         {
