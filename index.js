@@ -73,10 +73,15 @@ async function run() {
       res.send({ token });
     });
     //=================================================================
+    // create indexing =====================
+    
+    // create indexing =====================
 
     //users related action start ======================================================
     app.get("/users", async (req, res) => {
       const filter = req.query;
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
       let query = {};
       if (filter.name) {
         query.name = { $regex: filter.name, $options: "i" };
@@ -84,10 +89,22 @@ async function run() {
       if (filter.email) {
         query.email = { $regex: filter.email, $options: "i" };
       }
-      const result = await usersCollection.find(query).toArray();
+      const result = await usersCollection.find(query).skip(page*size).limit(size).toArray();
       res.send(result);
     });
-
+    app.get('/users_count',async(req,res)=>{
+      const filter = req.query;
+      
+      let query = {};
+      if (filter.name) {
+        query.name = { $regex: filter.name, $options: "i" };
+      }
+      if (filter.email) {
+        query.email = { $regex: filter.email, $options: "i" };
+      }
+      const usersCount = await usersCollection.countDocuments(query);
+      res.send({usersCount})
+    })
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -160,9 +177,15 @@ async function run() {
     // payment collection related action start ==================================
     app.get("/payment/:email",verifyToken,async(req,res)=>{
       const email = req.params.email;
-    
-      const result = await paymentCollection.find({email: email}).toArray();
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
+      const result = await paymentCollection.find({email: email}).skip(page*size).limit(size).toArray();
       res.send(result)
+    })
+    app.get('/payment_count/:email',async(req,res)=>{
+      const email = req.params.email;
+      const paymentCount = await paymentCollection.countDocuments({email: email});
+      res.send({paymentCount})
     })
     app.post("/payment", async (req, res) => {
       const payment = req.body;
@@ -186,16 +209,22 @@ async function run() {
     //upcoming collection related api start ==================================================
     app.get("/upcomingMeals", async (req, res) => {
       const likes = req.query.likes;
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
       let sortCriteria = {};
       if (likes === "likes") {
         sortCriteria = { likes: -1 };
       }
       const result = await upcomingMealsCollection
         .find()
-        .sort(sortCriteria)
+        .sort(sortCriteria).skip(page*size).limit(size)
         .toArray();
       res.send(result);
     });
+    app.get('/upcoming_meals_count',async(req,res)=>{
+      const upcomingMealsCount = await upcomingMealsCollection.countDocuments();
+      res.send({upcomingMealsCount})
+    })
     app.post("/upcomingMeals", async (req, res) => {
       const mealsInfo = req.body;
       const result = await upcomingMealsCollection.insertOne(mealsInfo);
@@ -216,7 +245,8 @@ async function run() {
     });
     app.get("/allMeals", async (req, res) => {
       const query = req.query.sort;
-
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
       // const order = 1;
       let sortCriteria = {};
       if (query === "likes") {
@@ -227,10 +257,14 @@ async function run() {
 
       const result = await mealsCollection
         .find({ status: "Available" })
-        .sort(sortCriteria)
+        .sort(sortCriteria).skip(page*size).limit(size)
         .toArray();
       res.send(result);
     });
+    app.get('/all_meals_count',async(req,res) =>{
+      const allMealsCount = await mealsCollection.countDocuments();
+      res.send({allMealsCount})
+    })
     app.get(
       "/total_meals/:email",
       verifyToken,
@@ -242,6 +276,7 @@ async function run() {
         res.send({ mealsCount });
       }
     );
+   
     app.get("/meals", async (req, res) => {
       const { limit, offset, category, price, search } = req.query;
       const priceValue = parseFloat(price);
@@ -330,10 +365,28 @@ async function run() {
         .toArray();
       res.send(result);
     });
+   
     //upcomingPublic meal related work with mealsCollection and upcomingMeals collection end============
 
     //request meal collection related work start here ======================
     app.get('/serve_meals',verifyToken,verifyAdmin,async(req,res)=>{
+      const search = req.query.search;
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
+      let query = {}
+      const regex = new RegExp(search, 'i'); // Case-insensitive regex
+      if(search){
+          query =   {
+            $or: [
+              { 'requester.email': regex },
+              { 'requester.name': regex }
+            ]
+          }
+      }
+      const result = await requestMealsCollection.find(query).skip(page*size).limit(size).toArray();
+      res.send(result)
+    })
+    app.get('/serve_meals_count',async(req,res)=>{
       const search = req.query.search;
       let query = {}
       const regex = new RegExp(search, 'i'); // Case-insensitive regex
@@ -345,14 +398,22 @@ async function run() {
             ]
           }
       }
-      const result = await requestMealsCollection.find(query).toArray();
-      res.send(result)
+        const countServeMeals = await requestMealsCollection.countDocuments(query);
+        res.send({countServeMeals})
     })
     app.get('/request_meals/:email',verifyToken,async(req,res)=>{
       const email = req.params.email;
-      const query ={'requester.email': email}
-      const result = await requestMealsCollection.find(query).toArray();
+      const query ={'requester.email': email};
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
+      const result = await requestMealsCollection.find(query).skip(page*size).limit(size).toArray();
       res.send(result)
+    })
+    app.get('/request_meals_count/:email',async(req,res)=>{
+      const email = req.params.email;
+      const query ={'requester.email': email};
+      const requestMealsCount = await requestMealsCollection.countDocuments(query)
+      res.send({requestMealsCount})
     })
       app.post('/request_meals',async(req,res)=>{
         const requestMealInfo = req.body;
@@ -585,11 +646,29 @@ async function run() {
     //likes collection related work end here  ============================
 
     //reviews collection related work start here ========================
-    app.get('/reviews/:email',async(req,res)=>{
-      const email = req.params.email;
-      const query = {'reviewer.email': email}
-      const result = await reviewsCollection.find(query).toArray();
+    app.get('/all_reviews',verifyToken,verifyAdmin,async(req,res)=>{
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
+      const result = await reviewsCollection.find().skip(page*size).limit(size).toArray();
       res.send(result)
+    })
+    app.get('/all_reviews_count',async(req,res)=>{
+      const countReviewMeals = await requestMealsCollection.countDocuments();
+        res.send({countReviewMeals})
+    })
+    app.get('/reviews/:email',verifyToken,async(req,res)=>{
+      const email = req.params.email;
+      const query = {'reviewer.email': email};
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page) -1;
+      const result = await reviewsCollection.find(query).skip(page*size).limit(size).toArray();
+      res.send(result)
+    })
+    app.get('/request_count/:email',async(req,res)=>{
+      const email = req.params.email;
+      const query = {'reviewer.email': email};
+      const reviewCount = await reviewsCollection.countDocuments(query)
+      res.send({reviewCount})
     })
       app.post('/reviews/:id',async(req,res)=>{
         const id = req.params.id;
@@ -625,7 +704,7 @@ async function run() {
       }
         
       })
-      app.delete('/reviews/:id',async(req,res)=>{
+      app.delete('/reviews/:id',verifyToken,async(req,res)=>{
         const id  = req.params.id;
         const query ={_id: new ObjectId(id)}
         const result = await reviewsCollection.deleteOne(query);
