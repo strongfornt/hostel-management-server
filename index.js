@@ -158,7 +158,12 @@ async function run() {
     //Payment related action end===================================================
 
     // payment collection related action start ==================================
-
+    app.get("/payment/:email",verifyToken,async(req,res)=>{
+      const email = req.params.email;
+    
+      const result = await paymentCollection.find({email: email}).toArray();
+      res.send(result)
+    })
     app.post("/payment", async (req, res) => {
       const payment = req.body;
       const result = await paymentCollection.insertOne(payment);
@@ -328,11 +333,54 @@ async function run() {
     //upcomingPublic meal related work with mealsCollection and upcomingMeals collection end============
 
     //request meal collection related work start here ======================
+    app.get('/serve_meals',verifyToken,verifyAdmin,async(req,res)=>{
+      const search = req.query.search;
+      let query = {}
+      const regex = new RegExp(search, 'i'); // Case-insensitive regex
+      if(search){
+          query =   {
+            $or: [
+              { 'requester.email': regex },
+              { 'requester.name': regex }
+            ]
+          }
+      }
+      const result = await requestMealsCollection.find(query).toArray();
+      res.send(result)
+    })
+    app.get('/request_meals/:email',verifyToken,async(req,res)=>{
+      const email = req.params.email;
+      const query ={'requester.email': email}
+      const result = await requestMealsCollection.find(query).toArray();
+      res.send(result)
+    })
       app.post('/request_meals',async(req,res)=>{
         const requestMealInfo = req.body;
         const result = await requestMealsCollection.insertOne(requestMealInfo);
         res.send(result);
       })
+      app.put('/serve_meals/:id',async(req,res)=>{
+        const id = req.params.id;
+        const status = req.body.status;
+        const query = {_id : new ObjectId(id)}
+        const options = { upsert: true };
+        const updateDoc = {
+          $set: {
+          status:status
+          },
+        };
+        
+        const result = await requestMealsCollection.updateOne(query,updateDoc,options)
+        res.send(result)
+      })
+
+      app.delete('/request_meals/:id',verifyToken,async(req,res)=>{
+        const id= req.params.id;
+        const query = {_id : new ObjectId(id)}
+        const result = await requestMealsCollection.deleteOne(query);
+        res.send(result)
+      })
+
     //request meal collection related work start here end ======================
 
     //likes collection related work start here  ============================
@@ -537,6 +585,12 @@ async function run() {
     //likes collection related work end here  ============================
 
     //reviews collection related work start here ========================
+    app.get('/reviews/:email',async(req,res)=>{
+      const email = req.params.email;
+      const query = {'reviewer.email': email}
+      const result = await reviewsCollection.find(query).toArray();
+      res.send(result)
+    })
       app.post('/reviews/:id',async(req,res)=>{
         const id = req.params.id;
         const reviewsData = req.body;
@@ -570,6 +624,12 @@ async function run() {
 
       }
         
+      })
+      app.delete('/reviews/:id',async(req,res)=>{
+        const id  = req.params.id;
+        const query ={_id: new ObjectId(id)}
+        const result = await reviewsCollection.deleteOne(query);
+        res.send(result)
       })
     //reviews collection related work start here end ========================
 
