@@ -50,6 +50,7 @@ async function run() {
     const upcomingMealsCollection = database.collection("upcomingMeals");
     const likesCollection = database.collection("likes");
     const reviewsCollection = database.collection("reviews");
+    const mealRequestCollection = database.collection("requestedMeals")
     //database collection end ========================================================
 
     //jwt related api =================================================
@@ -316,6 +317,7 @@ async function run() {
       res.send(result);
     });
     //meal collection related action api end ======================================
+
     //upcomingPublic meal related work with mealsCollection and upcomingMeals collection======================
     app.get("/upcoming_public_meals", async (req, res) => {
       const result = await mealsCollection
@@ -325,11 +327,38 @@ async function run() {
     });
     //upcomingPublic meal related work with mealsCollection and upcomingMeals collection end============
 
+    //request meal collection related work start here ======================
+      app.post('/request_meals',async(req,res)=>{
+        const {requestMealInfo} = req.body;
+        console.log(requestMealInfo);
+      })
+    //request meal collection related work start here end ======================
+
     //likes collection related work start here  ============================
+    app.get('/likes/',async(req,res)=>{
+      const info = req.query;
+      const mealsArray = info?.mealsIds.split(",")
+      const  mealIds = mealsArray?.map(id => id)
+     
+      const likes = await likesCollection.find({ mealId: { $in:mealIds } }).toArray();
+      
+      let likeStatus = {};
+      mealsArray.forEach(id => {
+          const like = likes.find(like => like.mealId.toString()=== id);
+          if(like && like.userEmails.includes(info?.email)){
+            likeStatus[id] = true;
+          }else{
+            likeStatus[id] = false;
+          }
+      });
+      
+      res.send(likeStatus)
+    })
+
     app.post("/likes/:id", async (req, res) => {
       const id = req.params.id;
       // const query = {}
-      const { email, upcomingId } = req.body;
+      const { email, upcomingId  } = req.body;
     
       const existingLike = await likesCollection.findOne({ mealId: id });
       if (existingLike) {
@@ -396,13 +425,74 @@ async function run() {
       
 
     });
+    app.post("/likes_available_meals/:id", async (req, res) => {
+      const id = req.params.id;
+      // const query = {}
+      const { email } = req.body;
+    
+      const existingLike = await likesCollection.findOne({ mealId: id });
+      if (existingLike) {
+        const emailIndex = existingLike.userEmails.indexOf(email);
+
+        if (emailIndex > -1) {
+          await likesCollection.updateOne(
+            { mealId: id },
+            { $pull: { userEmails: email } }
+          );
+          await mealsCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $inc: { likes: -1 } }
+          );
+          // await upcomingMealsCollection.updateOne(
+          //   { _id: new ObjectId(upcomingId) },
+          //   { $inc: { likes: -1 } }
+          // );
+
+          return res.send({ message: false });
+        } else{
+          await likesCollection.updateOne(
+            { mealId: id },
+            { $push: { userEmails: email } }
+          );
+          await mealsCollection.updateOne(
+            { _id: new ObjectId(id) },
+            { $inc: { likes: 1 } }
+          );
+          // await upcomingMealsCollection.updateOne(
+          //   { _id: new ObjectId(upcomingId) },
+          //   { $inc: { likes: 1 } }
+          // );
+          // return res.send({message:true})
+        }
+      }else{
+        await likesCollection.insertOne({
+          mealId: id,
+          userEmails: [email],
+        });
+        await mealsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $inc: { likes: 1 } }
+        );
+        // await upcomingMealsCollection.updateOne(
+        //   { _id: new ObjectId(upcomingId) },
+        //   { $inc: { likes: 1 } }
+        // );
+        // return res.send({message:true})
+      }
+
+    
+
+      return res.send({ message: true });
+      
+
+    });
     //likes collection related work end here  ============================
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -415,5 +505,5 @@ app.get("/", async (req, res) => {
 });
 
 app.listen(port, () => {
-  ~console.log(`server running on port ${port}`);
+  console.log(`server running on port ${port}`);
 });
