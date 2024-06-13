@@ -276,19 +276,21 @@ async function run() {
         res.send({ mealsCount });
       }
     );
-   
+  
     app.get("/meals", async (req, res) => {
       const { limit, offset, category, price, search } = req.query;
       const priceValue = parseFloat(price);
       let query = {};
+      console.log(search);
       const regex = new RegExp(search, 'i'); // Case-insensitive regex
+      const formattedPrice = parseFloat(search)
       if(search){
           query =   {
             $or: [
               { title: regex },
               { category: regex },
               {status: regex},
-              { price: regex }
+              { price: isNaN(formattedPrice) ? regex : formattedPrice }
 
             ]
           }
@@ -297,10 +299,6 @@ async function run() {
       if (category) {
         query = { category: category };
       }
-      // if (search) {
-      //   query = { title: { $regex: search, $options: "i" } };
-      // }
-
       if (priceValue) {
         {
           if (priceValue === 5) {
@@ -659,6 +657,10 @@ async function run() {
     //likes collection related work end here  ============================
 
     //reviews collection related work start here ========================
+    app.get('/all_review',async(req,res)=>{
+      const result = await reviewsCollection.find().toArray()
+      res.send(result)
+    })
     app.get('/all_reviews',verifyToken,verifyAdmin,async(req,res)=>{
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page) -1;
